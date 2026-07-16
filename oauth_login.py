@@ -17,7 +17,7 @@ import requests
 CLIENT_KEY = None
 CLIENT_SECRET = None
 REDIRECT_URI = "https://rvcar551030.github.io/pineapple-mo-policies/callback.html"
-SCOPES = "user.info.basic,video.upload,video.publish"
+SCOPES = "user.info.basic,user.info.profile,user.info.stats,video.upload,video.publish"
 STATE = "demo123"
 
 def load_env():
