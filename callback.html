@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok Authorization Callback</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; line-height: 1.7; color: #222; }
+  code { background: #f2f2f2; padding: 12px; display: block; word-break: break-all; border-radius: 6px; margin: 12px 0; }
+  button { padding: 8px 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>TikTok Authorization</h1>
+<p id="status">Reading authorization code...</p>
+<code id="code"></code>
+<button id="copyBtn" style="display:none">Copy code</button>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+  const statusEl = document.getElementById('status');
+  const codeEl = document.getElementById('code');
+  const copyBtn = document.getElementById('copyBtn');
+
+  if (code) {
+    statusEl.textContent = 'Authorization successful. Copy this code and paste it into oauth_login.py:';
+    codeEl.textContent = code;
+    copyBtn.style.display = 'inline-block';
+    copyBtn.onclick = () => navigator.clipboard.writeText(code).then(() => copyBtn.textContent = 'Copied!');
+  } else if (error) {
+    statusEl.textContent = 'Authorization failed: ' + error;
+  } else {
+    statusEl.textContent = 'No authorization code found in URL.';
+  }
+</script>
+</body>
+</html>
