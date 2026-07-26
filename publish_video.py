@@ -56,15 +56,22 @@ def main():
     with open(video_path, "rb") as f:
         video_bytes = f.read()
 
-    upload_resp = requests.put(
-        upload_url,
-        headers={
-            "Content-Type": "video/mp4",
-            "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
-        },
-        data=video_bytes,
-    )
-    print("Upload status:", upload_resp.status_code)
+    for attempt in range(1, 4):
+        upload_resp = requests.put(
+            upload_url,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+            },
+            data=video_bytes,
+            timeout=60,
+        )
+        print(f"Upload attempt {attempt} status:", upload_resp.status_code)
+        if upload_resp.status_code in (200, 201):
+            break
+        time.sleep(3)
+    else:
+        raise SystemExit("Upload failed after 3 attempts, see status codes above.")
 
     print("Polling publish status...")
     for _ in range(10):
@@ -79,7 +86,7 @@ def main():
         status_data = status_resp.json()
         status = status_data.get("data", {}).get("status")
         print("Status:", status)
-        if status in ("PUBLISH_COMPLETE", "FAILED"):
+        if status in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE", "FAILED"):
             print(json.dumps(status_data, indent=2))
             break
         time.sleep(3)

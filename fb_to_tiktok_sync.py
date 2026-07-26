@@ -20,6 +20,7 @@ import random
 import shutil
 import subprocess
 import tempfile
+import time
 
 import requests
 
@@ -185,14 +186,23 @@ def upload_to_tiktok(access_token, video_path, caption):
     upload_url = init_data["data"]["upload_url"]
     with open(video_path, "rb") as f:
         video_bytes = f.read()
-    requests.put(
-        upload_url,
-        headers={
-            "Content-Type": "video/mp4",
-            "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
-        },
-        data=video_bytes,
-    )
+
+    for attempt in range(3):
+        up = requests.put(
+            upload_url,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+            },
+            data=video_bytes,
+            timeout=60,
+        )
+        if up.status_code in (200, 201):
+            break
+        time.sleep(3)
+    else:
+        raise SystemExit(f"TikTok upload failed after 3 attempts, last status: {up.status_code}")
+
     return init_data["data"]["publish_id"]
 
 def main():
