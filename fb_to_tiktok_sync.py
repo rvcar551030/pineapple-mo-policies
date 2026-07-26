@@ -197,11 +197,16 @@ def upload_to_tiktok(access_token, video_path, caption):
 
 def main():
     env = load_env()
-    fb_user_token = env["FB_TOKEN_RAW"]
     fb_page_id = env["FB_PAGE_ID"]
     tiktok_token = json.load(open(os.path.join(HERE, "token.json")))["access_token"]
 
-    page_token = get_page_token(fb_user_token, fb_page_id)
+    # Prefer a stored permanent Page Access Token (derived once from a long-lived
+    # user token via fb_exchange_token — Page tokens obtained this way never expire).
+    # Fall back to deriving one from a short-lived user token if not set.
+    page_token = env.get("FB_PAGE_ACCESS_TOKEN")
+    if not page_token:
+        page_token = get_page_token(env["FB_TOKEN_RAW"], fb_page_id)
+
     videos = fetch_page_videos(page_token, fb_page_id)
 
     synced_ids = load_synced()
