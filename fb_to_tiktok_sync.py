@@ -15,7 +15,9 @@ Run on a schedule (e.g. 3x/day via Windows Task Scheduler).
 """
 import json
 import os
+import platform
 import random
+import shutil
 import subprocess
 import tempfile
 
@@ -24,8 +26,19 @@ import requests
 HERE = os.path.dirname(__file__)
 SYNCED_LOG = os.path.join(HERE, "synced_videos.json")
 
-FFMPEG = r"C:\Users\ASUS\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin\ffmpeg.exe"
-FONT_FILE = r"C\:/Windows/Fonts/tahoma.ttf"
+# Cross-platform: env var overrides win; otherwise pick a sane per-OS default.
+# Windows needs the drawtext path with an escaped colon; Linux does not.
+if platform.system() == "Windows":
+    FFMPEG = os.environ.get(
+        "FFMPEG_PATH",
+        r"C:\Users\ASUS\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin\ffmpeg.exe",
+    )
+    FONT_FILE = os.environ.get("FONT_FILE", r"C\:/Windows/Fonts/tahoma.ttf")
+else:
+    FFMPEG = os.environ.get("FFMPEG_PATH", shutil.which("ffmpeg") or "ffmpeg")
+    FONT_FILE = os.environ.get(
+        "FONT_FILE", "/usr/share/fonts/opentype/tlwg/Loma-Bold.otf"
+    )
 
 # Opening 3-second hooks — curiosity/benefit-driven, agriculture-themed (Thai).
 # Rotated randomly so consecutive synced videos don't repeat the same hook.
