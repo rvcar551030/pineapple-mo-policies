@@ -13,6 +13,7 @@ Logic:
 Usage: python fb_to_tiktok_sync.py
 Run on a schedule (e.g. 3x/day via Windows Task Scheduler).
 """
+import difflib
 import json
 import os
 import platform
@@ -23,6 +24,8 @@ import tempfile
 import time
 
 import requests
+
+DUPLICATE_SIMILARITY_THRESHOLD = 0.8
 
 HERE = os.path.dirname(__file__)
 SYNCED_LOG = os.path.join(HERE, "synced_videos.json")
@@ -142,8 +145,47 @@ def save_synced(synced_ids):
     with open(SYNCED_LOG, "w") as f:
         json.dump(synced_ids, f, indent=2)
 
-def pick_video(videos, synced_ids):
+def fetch_existing_tiktok_captions(tiktok_token):
+    """Pages through the account's existing TikTok videos and returns their captions,
+    so we can avoid re-posting something that's already up (regardless of how it
+    got there — this catches manual uploads too, not just ones we synced)."""
+    captions = []
+    cursor = None
+    for _ in range(20):  # hard cap so a bug can't loop forever
+        body = {"max_count": 20}
+        if cursor:
+            body["cursor"] = cursor
+        r = requests.post(
+            "https://open.tiktokapis.com/v2/video/list/",
+            headers={"Authorization": f"Bearer {tiktok_token}", "Content-Type": "application/json; charset=UTF-8"},
+            params={"fields": "title,video_description"},
+            json=body,
+        )
+        data = r.json().get("data", {})
+        for v in data.get("videos", []):
+            text = (v.get("video_description") or v.get("title") or "").strip()
+            if text:
+                captions.append(text)
+        if not data.get("has_more"):
+            break
+        cursor = data.get("cursor")
+    return captions
+
+def is_duplicate_caption(candidate_text, existing_captions):
+    if not candidate_text:
+        return False
+    for existing in existing_captions:
+        ratio = difflib.SequenceMatcher(None, candidate_text, existing).ratio()
+        if ratio >= DUPLICATE_SIMILARITY_THRESHOLD:
+            return True
+    return False
+
+def pick_video(videos, synced_ids, existing_tiktok_captions):
     candidates = [v for v in videos if v["id"] not in synced_ids]
+    candidates = [
+        v for v in candidates
+        if not is_duplicate_caption((v.get("title") or v.get("description") or "").strip(), existing_tiktok_captions)
+    ]
     if not candidates:
         return None
     # newest first (FB returns videos newest-first by default)
@@ -219,10 +261,14 @@ def main():
 
     videos = fetch_page_videos(page_token, fb_page_id)
 
+    print("Checking existing TikTok videos to avoid re-posting duplicates...")
+    existing_captions = fetch_existing_tiktok_captions(tiktok_token)
+    print(f"Found {len(existing_captions)} existing TikTok videos to compare against.")
+
     synced_ids = load_synced()
-    video = pick_video(videos, synced_ids)
+    video = pick_video(videos, synced_ids, existing_captions)
     if video is None:
-        print("No unsynced videos remain. Nothing to do.")
+        print("No eligible videos remain (either already synced or a near-duplicate of something already on TikTok). Nothing to do.")
         return
 
     base_text = (video.get("title") or video.get("description") or "").strip()[:150]
