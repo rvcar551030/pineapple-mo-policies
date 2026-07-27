@@ -309,10 +309,9 @@ def main():
 
         with tempfile.TemporaryDirectory() as tmp:
             raw_path = os.path.join(tmp, "raw.mp4")
-            hooked_path = os.path.join(tmp, "hooked.mp4")
             download_video(video["source"], raw_path)
-            add_opening_hook(raw_path, hooked_path, hook)
-            publish_id = upload_to_tiktok(tiktok_token, hooked_path, caption)
+            # Video stays untouched — the hook is text-only, placed in the caption below.
+            publish_id = upload_to_tiktok(tiktok_token, raw_path, caption)
             print(f"Uploaded to TikTok inbox. publish_id={publish_id}")
 
         synced_ids.append(video["id"])
