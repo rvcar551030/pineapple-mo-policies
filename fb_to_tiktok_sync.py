@@ -278,6 +278,8 @@ def upload_to_tiktok(access_token, video_path, caption):
 
     return init_data["data"]["publish_id"]
 
+VIDEOS_PER_RUN = 5
+
 def main():
     env = load_env()
     fb_page_id = env["FB_PAGE_ID"]
@@ -297,28 +299,34 @@ def main():
     print(f"Found {len(existing_captions)} existing TikTok videos to compare against.")
 
     synced_ids = load_synced()
-    video = pick_video(videos, synced_ids, existing_captions)
-    if video is None:
-        print("No eligible videos remain (either already synced or a near-duplicate of something already on TikTok). Nothing to do.")
-        return
+    uploaded = 0
 
-    base_text = (video.get("title") or video.get("description") or "").strip()[:150]
-    hook = pick_hook()
-    caption = build_caption(base_text, hook)
-    print(f"Picked video {video['id']} — hook: {hook!r}")
-    print(f"Caption:\n{caption}")
+    for i in range(VIDEOS_PER_RUN):
+        video = pick_video(videos, synced_ids, existing_captions)
+        if video is None:
+            print(f"[{i+1}/{VIDEOS_PER_RUN}] No eligible videos remain. Stopping early.")
+            break
 
-    with tempfile.TemporaryDirectory() as tmp:
-        raw_path = os.path.join(tmp, "raw.mp4")
-        hooked_path = os.path.join(tmp, "hooked.mp4")
-        download_video(video["source"], raw_path)
-        add_opening_hook(raw_path, hooked_path, hook)
-        publish_id = upload_to_tiktok(tiktok_token, hooked_path, caption)
-        print(f"Uploaded to TikTok inbox. publish_id={publish_id}")
+        base_text = (video.get("title") or video.get("description") or "").strip()[:150]
+        hook = pick_hook()
+        caption = build_caption(base_text, hook)
+        print(f"[{i+1}/{VIDEOS_PER_RUN}] Picked video {video['id']} — hook: {hook!r}")
+        print(f"Caption:\n{caption}")
 
-    synced_ids.append(video["id"])
-    save_synced(synced_ids)
-    print("Recorded as synced. Go into the TikTok app to set timing, add the cart link, and publish.")
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = os.path.join(tmp, "raw.mp4")
+            hooked_path = os.path.join(tmp, "hooked.mp4")
+            download_video(video["source"], raw_path)
+            add_opening_hook(raw_path, hooked_path, hook)
+            publish_id = upload_to_tiktok(tiktok_token, hooked_path, caption)
+            print(f"Uploaded to TikTok inbox. publish_id={publish_id}")
+
+        synced_ids.append(video["id"])
+        existing_captions.append(caption)
+        save_synced(synced_ids)
+        uploaded += 1
+
+    print(f"Done. Uploaded {uploaded}/{VIDEOS_PER_RUN} videos. Go into the TikTok app to set timing, add cart links, and publish.")
 
 if __name__ == "__main__":
     main()
