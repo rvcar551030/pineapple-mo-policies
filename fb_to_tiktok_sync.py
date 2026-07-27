@@ -92,11 +92,9 @@ BROAD_HASHTAGS = [
 ]
 
 def build_hashtags():
-    tags = (
-        random.sample(BRAND_HASHTAGS, 2)
-        + random.sample(NICHE_HASHTAGS, 3)
-        + random.sample(BROAD_HASHTAGS, 2)
-    )
+    # Keep it lean: 1 brand tag + 1-2 topic tags (niche or broad) = 2-3 total.
+    topic_pool = NICHE_HASHTAGS + BROAD_HASHTAGS
+    tags = random.sample(BRAND_HASHTAGS, 1) + random.sample(topic_pool, random.choice([1, 2]))
     return " ".join(tags)
 
 def build_caption(base_text, hook_text):
