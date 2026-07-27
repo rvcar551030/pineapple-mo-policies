@@ -219,12 +219,8 @@ def pick_video(videos, synced_ids, existing_tiktok_captions):
     ]
     if not candidates:
         return None
-    # newest first (FB returns videos newest-first by default)
-    candidates.sort(key=lambda v: v.get("created_time", ""), reverse=True)
-    newest = candidates[0]
-    already_had_newest_before = len(synced_ids) > 0 and videos and videos[0]["id"] in synced_ids
-    if not already_had_newest_before:
-        return newest
+    # Random order each run — synced_ids guarantees no repeats across runs,
+    # and it's updated within a batch so a single run never repeats either.
     return random.choice(candidates)
 
 def download_video(source_url, dest_path):
