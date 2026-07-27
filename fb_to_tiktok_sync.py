@@ -45,13 +45,23 @@ else:
     )
 
 # Opening 3-second hooks — curiosity/benefit-driven, agriculture-themed (Thai).
-# Rotated randomly so consecutive synced videos don't repeat the same hook.
+# A larger, varied pool (questions, bold claims, social proof, urgency) so
+# consecutive synced videos rarely repeat the same line.
 HOOK_TEMPLATES = [
     "ทำไมต้นไม้คุณไม่โต? ดูนี่ก่อน!",
     "สูตรลับที่ชาวสวนไม่บอกใคร",
     "แค่นี้ผลผลิตเพิ่ม 30%!",
     "ห้ามพลาด! เคล็ดลับดินดี",
     "รากแข็งแรง ต้นโตไว ทำยังไง?",
+    "เกษตรกรกว่า 1,000 คนเลือกใช้สูตรนี้",
+    "ใส่ผิดวิธี ต้นไม่โตแน่นอน",
+    "3 วินาทีนี้ เปลี่ยนสวนคุณได้เลย",
+    "ทำไมสวนข้างบ้านถึงผลดกกว่า?",
+    "เคล็ดลับที่ทำให้ผลไม้หวานขึ้น",
+    "ปัญหานี้แก้ได้ง่ายกว่าที่คิด",
+    "ดูก่อนซื้อปุ๋ยครั้งต่อไป",
+    "สวนโมทำเอง รับประกันคุณภาพ",
+    "เทคนิคที่มืออาชีพใช้จริง",
 ]
 
 def pick_hook():
@@ -64,15 +74,29 @@ CTA_TEMPLATES = [
     "เซฟไว้เลย เดี๋ยวหาไม่เจอ",
     "ใครเคยลองแบบนี้บ้าง คอมเมนต์บอกกันหน่อย",
     "แชร์ให้เพื่อนชาวสวนคนอื่นดูด้วยนะ",
+    "กดหัวใจไว้ก่อน แล้วลองทำตามดู",
+    "อยากรู้ราคา ทักแชทมาได้เลยค่ะ",
+    "แท็กเพื่อนที่กำลังหาปุ๋ยดีๆ อยู่",
+    "ติดตามไว้ เดี๋ยวมีสูตรใหม่มาเรื่อยๆ",
 ]
 
-# Hashtag pool: brand + niche + broad reach tags, rotated per post.
-BRAND_HASHTAGS = ["#สวนโม", "#pineapplefarmmo"]
-NICHE_HASHTAGS = ["#ปุ๋ยอินทรีย์", "#เกษตรกรรม", "#ทำสวน", "#ปลูกผลไม้", "#หน่อพันธุ์"]
-BROAD_HASHTAGS = ["#fyp", "#เกษตรไทย", "#ของดีบอกต่อ"]
+# Hashtag pool: brand + niche + broad reach tags, rotated per post so the same
+# combination doesn't appear on every post.
+BRAND_HASHTAGS = ["#สวนโม", "#pineapplefarmmo", "#สวนโมออร์แกนิค"]
+NICHE_HASHTAGS = [
+    "#ปุ๋ยอินทรีย์", "#เกษตรกรรม", "#ทำสวน", "#ปลูกผลไม้", "#หน่อพันธุ์",
+    "#ปุ๋ยชีวภาพ", "#สวนผลไม้", "#เกษตรอินทรีย์", "#ปลูกสับปะรด", "#รักการปลูก",
+]
+BROAD_HASHTAGS = [
+    "#fyp", "#เกษตรไทย", "#ของดีบอกต่อ", "#tiktokshop", "#ติ๊กต็อกช้อป", "#รีวิวสินค้า",
+]
 
 def build_hashtags():
-    tags = BRAND_HASHTAGS + random.sample(NICHE_HASHTAGS, 2) + random.sample(BROAD_HASHTAGS, 1)
+    tags = (
+        random.sample(BRAND_HASHTAGS, 2)
+        + random.sample(NICHE_HASHTAGS, 3)
+        + random.sample(BROAD_HASHTAGS, 2)
+    )
     return " ".join(tags)
 
 def build_caption(base_text, hook_text):
@@ -86,14 +110,21 @@ def build_caption(base_text, hook_text):
     return "\n".join(parts)[:2200]
 
 def add_opening_hook(src_path, dst_path, hook_text):
-    """Burns `hook_text` as bold on-screen text visible only during t=0-3s."""
+    """Burns `hook_text` as an on-screen hook with a smooth fade in/out over t=0-3s."""
     escaped = hook_text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "")
+    # Fade in over 0.25s, hold, fade out over the last 0.25s of the 3s window.
+    alpha_expr = (
+        r"if(lt(t\,0.25)\,t/0.25\,"
+        r"if(lt(t\,2.75)\,1\,"
+        r"if(lt(t\,3.0)\,(3.0-t)/0.25\,0)))"
+    )
     vf = (
         f"drawtext=fontfile='{FONT_FILE}':text='{escaped}':"
-        f"fontcolor=white:fontsize=64:borderw=3:bordercolor=black:"
+        f"fontcolor=0xFFF6D8:fontsize=66:"
+        f"shadowcolor=black@0.7:shadowx=2:shadowy=3:"
         f"x=(w-text_w)/2:y=h*0.15:"
-        f"box=1:boxcolor=black@0.45:boxborderw=24:"
-        r"enable='between(t\,0\,3)'"
+        f"box=1:boxcolor=0x1B4D3E@0.72:boxborderw=28:"
+        f"alpha='{alpha_expr}'"
     )
     subprocess.run(
         [FFMPEG, "-y", "-i", src_path, "-vf", vf, "-c:a", "copy", dst_path],
